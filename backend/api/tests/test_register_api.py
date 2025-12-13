@@ -1,5 +1,5 @@
 import pytest
-from djago.urls import reverse
+from django.urls import reverse
 from rest_framework.test import APIClient
 
 client = APIClient()
@@ -14,8 +14,8 @@ def test_register_success():
     }
     response = client.post(reverse("register"), payload, format='json')
 
-    assert response.status_code == 201
-    assert response.data["message"] == "User registered successfully."
+    assert response.status_code == 201  
+    assert response.data["email"] == "test@example.com"
 
 @pytest.mark.django_db
 def test_register_email_duplicate():
