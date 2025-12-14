@@ -8,9 +8,15 @@ from .models import EMAILOTP
 from django.conf import settings
 import random
 from rest_framework import generics
-from .serializers import UserSerializer, VerifyOTPSerializer
+from .serializers import UserSerializer, VerifyOTPSerializer, LoginSerializer
 from rest_framework.permissions import  AllowAny
 from django.core.mail import send_mail
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
+from api.models import EMAILOTP
+from rest_framework.permissions import AllowAny
+
+
 
 
 
@@ -65,3 +71,39 @@ class VerifyOTPView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "Invalid credentials."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        if not EMAILOTP.objects.filter(user=user, is_used=True).exists():
+            return Response(
+                {"detail": "Account not verified."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        user = authenticate(username=user.username, password=password)
+        if not user:
+            return Response(
+                {"detail": "Invalid credentials."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response(
+            {
+                "detail": "Login successful.",
+                "token": token.key
+            },
+            status=status.HTTP_200_OK
+        )
